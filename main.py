@@ -1,11 +1,20 @@
 import os
-from dotenv import load_dotenv
 import discord
 
-# optional: load a local .env file for development
-load_dotenv()
+# optional: load a local .env file for development; don't fail if python-dotenv isn't installed
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception as e:
+    print('python-dotenv not available or failed to load .env:', e)
 
-from keep_alive import start as keep_alive_start
+# import keep-alive starter (keep_alive is resilient and falls back if Flask missing)
+try:
+    from keep_alive import start as keep_alive_start
+except Exception as e:
+    # keep_alive should be robust, but guard here too
+    print('keep_alive import failed:', e)
+    keep_alive_start = None
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -29,11 +38,11 @@ async def on_message(message):
 
 if __name__ == '__main__':
     # start a small webserver to keep the repl awake (Replit, uptime monitors, etc.)
-    try:
-        keep_alive_start()
-    except Exception:
-        # non-fatal if Flask isn't available locally; we'll still try to run the bot
-        pass
+    if callable(keep_alive_start):
+        try:
+            keep_alive_start()
+        except Exception as e:
+            print('Warning: keep_alive failed to start:', e)
 
     token = os.environ.get('DISCORD_TOKEN')
     if not token:
